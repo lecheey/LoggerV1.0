@@ -1,26 +1,38 @@
 #include <iostream>
+#include <string>
+#include <algorithm>
+#include <vector>
+#include <thread>
 #include "logger.h"
 #include "func.h"
 
 int main(){
 	Logger logger;
+    
+	std::vector<std::thread> threads{}; // массив потоков
+	int a{20}; // число потоков
 	
-	char a;
-	while(true){
-		std::cout << "1 - показать 2 - сохранить q - выход: ";
-		std::cin >> a;
+	// потоки
+	for(int i = 0; i < a; i++){
+		std::string b = "поток " + std::to_string(i);
+		
+		// случайные потоки на чтение
+		if(i == 6 || i == 14 || i == 18){
+			threads.push_back(std::thread([&logger](){
+				logger.LogRead();
+			}));
+		}
+		
+		// потоки на запись
+		else{
+			threads.push_back(std::thread([&logger,i,b](){
+				logger.LogWrite(getTime(), b, "важное сообщение");
+			}));
+		}
+    }
 
-		if(a == '1'){
-			logger.LogRead();
-		}
-		else if(a == '2'){
-			logger.LogWrite(getTime(), "Phone", "Завершение работы");
-			std::cout << "новая запись в лог" << std::endl;
-		}
-		else if(a == 'q'){
-			break;
-		}
-	}
+    std::for_each(threads.begin(), threads.end(), [] (std::thread &t)
+         { t.join(); });
 
 	return 0;
 }
