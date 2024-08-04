@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <shared_mutex>
 #include "logger.h"
 
 Logger::Logger(){
@@ -13,8 +14,13 @@ Logger::Logger(){
 			fs::perm_options::replace);
 	}
 	else{
-		std::cout << "Лог открыт" << std::endl;	
-		logfile.open(logpath, std::ios::in | std::ios::out | std::ios::app); // открытие для чтения/записи
+		if(logfile.is_open()){
+			std::cout << "Лог-файл уже открыт" << std::endl;
+		}
+		else{
+			std::cout << "Лог-файл открыт" << std::endl;	
+			logfile.open(logpath, std::ios::in | std::ios::out | std::ios::app); // открытие для чтения/записи
+		}
 	}
 		
 	if(!logfile){
@@ -25,23 +31,37 @@ Logger::Logger(){
 Logger::~Logger(){
 	if(logfile.is_open()){
 		logfile.close();
-		std::cout << "лог закрыт" << std::endl;
+		std::cout << "Лог-файл закрыт" << std::endl;
 	}
-	std::cout << "выход" << std::endl;
+	std::cout << "Завершение работы" << std::endl;
 }
 
 void Logger::LogRead(){
+	m.lock_shared();	
 	std::string _str;
-	while(getline(logfile, _str, '\n')){
-		std::cout << _str << std::endl;
-	}	
+	if(logfile.is_open()){
+		while(getline(logfile, _str, '\n')){
+			std::cout << _str << std::endl;
+		}
+		
+		logfile.clear();
+		logfile.seekg(0);
+	}
+	m.unlock_shared();
 }
 
 void Logger::LogWrite(std::string _time, std::string _name, std::string _message){
-	logfile << _time;	
-	logfile << ';';	
-	logfile << _name;	
-	logfile << ';';	
-	logfile << _message;	
-	logfile << '\n';	
+	m.lock();	
+	if(logfile.is_open()){
+		logfile << _time;	
+		logfile << ';';	
+		logfile << _name;	
+		logfile << ';';	
+		logfile << _message;	
+		logfile << '\n';	
+		
+		logfile.clear();
+		logfile.seekg(0);
+	}
+	m.unlock();
 }
